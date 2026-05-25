@@ -8,6 +8,7 @@ export default function App() {
   const [selectedCountry, setSelectedCountry] = useState(null)
   const [panelOpen, setPanelOpen] = useState(false)
   const [introVisible, setIntroVisible] = useState(true)
+  const [targetCountry, setTargetCountry] = useState(null)
   const cursorRef = useRef(null)
   const ringRef = useRef(null)
   let mx = 0, my = 0, rx = 0, ry = 0
@@ -45,6 +46,7 @@ export default function App() {
   const handleCountrySelect = (country) => {
     setSelectedCountry(country)
     setPanelOpen(true)
+    setTargetCountry(country.name)
   }
 
   const handlePanelClose = () => {
@@ -68,7 +70,7 @@ export default function App() {
       <Navbar />
 
       <div className="globe-canvas">
-        <Globe onCountrySelect={handleCountrySelect} />
+        <Globe onCountrySelect={handleCountrySelect} targetCountry={targetCountry} />
       </div>
 
       <SearchBar onCountrySelect={handleCountrySelect} />

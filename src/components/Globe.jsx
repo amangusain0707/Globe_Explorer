@@ -5,26 +5,71 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 
 const COUNTRY_MARKERS = [
+  // Asia
   { name: 'India', lat: 20.5937, lng: 78.9629, color: '#ff6b6b' },
-  { name: 'United States', lat: 37.0902, lng: -95.7129, color: '#4fc3f7' },
   { name: 'China', lat: 35.8617, lng: 104.1954, color: '#ff9800' },
-  { name: 'Brazil', lat: -14.2350, lng: -51.9253, color: '#66bb6a' },
-  { name: 'Russia', lat: 61.5240, lng: 105.3188, color: '#ab47bc' },
-  { name: 'Australia', lat: -25.2744, lng: 133.7751, color: '#ffca28' },
   { name: 'Japan', lat: 36.2048, lng: 138.2529, color: '#ef5350' },
+  { name: 'South Korea', lat: 35.9078, lng: 127.7669, color: '#26c6da' },
+  { name: 'Indonesia', lat: -0.7893, lng: 113.9213, color: '#ef5350' },
+  { name: 'Saudi Arabia', lat: 23.8859, lng: 45.0792, color: '#26c6da' },
+  { name: 'Turkey', lat: 38.9637, lng: 35.2433, color: '#ab47bc' },
+  { name: 'Pakistan', lat: 30.3753, lng: 69.3451, color: '#66bb6a' },
+  { name: 'Bangladesh', lat: 23.6850, lng: 90.3563, color: '#ff7043' },
+  { name: 'Thailand', lat: 15.8700, lng: 100.9925, color: '#ffca28' },
+  { name: 'Vietnam', lat: 14.0583, lng: 108.2772, color: '#ef5350' },
+  { name: 'Malaysia', lat: 4.2105, lng: 101.9758, color: '#26a69a' },
+  { name: 'Philippines', lat: 12.8797, lng: 121.7740, color: '#42a5f5' },
+  { name: 'Iran', lat: 32.4279, lng: 53.6880, color: '#ab47bc' },
+  { name: 'Iraq', lat: 33.2232, lng: 43.6793, color: '#ffa726' },
+  { name: 'Israel', lat: 31.0461, lng: 34.8516, color: '#29b6f6' },
+  { name: 'United Arab Emirates', lat: 23.4241, lng: 53.8478, color: '#ffd54f' },
+  { name: 'Singapore', lat: 1.3521, lng: 103.8198, color: '#ec407a' },
+  { name: 'Nepal', lat: 28.3949, lng: 84.1240, color: '#ff6b6b' },
+  { name: 'Sri Lanka', lat: 7.8731, lng: 80.7718, color: '#66bb6a' },
+  { name: 'Kazakhstan', lat: 48.0196, lng: 66.9237, color: '#ab47bc' },
+
+  // Europe
   { name: 'Germany', lat: 51.1657, lng: 10.4515, color: '#26c6da' },
   { name: 'France', lat: 46.2276, lng: 2.2137, color: '#7e57c2' },
-  { name: 'Canada', lat: 56.1304, lng: -106.3468, color: '#ec407a' },
   { name: 'United Kingdom', lat: 55.3781, lng: -3.4360, color: '#29b6f6' },
   { name: 'Italy', lat: 41.8719, lng: 12.5674, color: '#26a69a' },
-  { name: 'South Africa', lat: -30.5595, lng: 22.9375, color: '#d4e157' },
+  { name: 'Spain', lat: 40.4637, lng: -3.7492, color: '#ff7043' },
+  { name: 'Russia', lat: 61.5240, lng: 105.3188, color: '#ab47bc' },
+  { name: 'Ukraine', lat: 48.3794, lng: 31.1656, color: '#ffca28' },
+  { name: 'Poland', lat: 51.9194, lng: 19.1451, color: '#ef5350' },
+  { name: 'Netherlands', lat: 52.1326, lng: 5.2913, color: '#ff9800' },
+  { name: 'Sweden', lat: 60.1282, lng: 18.6435, color: '#42a5f5' },
+  { name: 'Norway', lat: 60.4720, lng: 8.4689, color: '#26c6da' },
+  { name: 'Switzerland', lat: 46.8182, lng: 8.2275, color: '#ec407a' },
+  { name: 'Portugal', lat: 39.3999, lng: -8.2245, color: '#66bb6a' },
+  { name: 'Greece', lat: 39.0742, lng: 21.8243, color: '#29b6f6' },
+
+  // Americas
+  { name: 'United States', lat: 37.0902, lng: -95.7129, color: '#4fc3f7' },
+  { name: 'Canada', lat: 56.1304, lng: -106.3468, color: '#ec407a' },
+  { name: 'Brazil', lat: -14.2350, lng: -51.9253, color: '#66bb6a' },
   { name: 'Mexico', lat: 23.6345, lng: -102.5528, color: '#ff7043' },
   { name: 'Argentina', lat: -38.4161, lng: -63.6167, color: '#42a5f5' },
-  { name: 'Egypt', lat: 26.8206, lng: 30.8025, color: '#ffa726' },
+  { name: 'Colombia', lat: 4.5709, lng: -74.2973, color: '#ffa726' },
+  { name: 'Chile', lat: -35.6751, lng: -71.5430, color: '#ab47bc' },
+  { name: 'Peru', lat: -9.1900, lng: -75.0152, color: '#ff6b6b' },
+  { name: 'Venezuela', lat: 6.4238, lng: -66.5897, color: '#26c6da' },
+  { name: 'Cuba', lat: 21.5218, lng: -77.7812, color: '#ef5350' },
+
+  // Africa
+  { name: 'South Africa', lat: -30.5595, lng: 22.9375, color: '#d4e157' },
   { name: 'Nigeria', lat: 9.0820, lng: 8.6753, color: '#66bb6a' },
-  { name: 'Saudi Arabia', lat: 23.8859, lng: 45.0792, color: '#26c6da' },
-  { name: 'Indonesia', lat: -0.7893, lng: 113.9213, color: '#ef5350' },
-  { name: 'Turkey', lat: 38.9637, lng: 35.2433, color: '#ab47bc' },
+  { name: 'Egypt', lat: 26.8206, lng: 30.8025, color: '#ffa726' },
+  { name: 'Ethiopia', lat: 9.1450, lng: 40.4897, color: '#ff7043' },
+  { name: 'Kenya', lat: -0.0236, lng: 37.9062, color: '#26a69a' },
+  { name: 'Ghana', lat: 7.9465, lng: -1.0232, color: '#ffca28' },
+  { name: 'Tanzania', lat: -6.3690, lng: 34.8888, color: '#ab47bc' },
+  { name: 'Morocco', lat: 31.7917, lng: -7.0926, color: '#ff6b6b' },
+  { name: 'Algeria', lat: 28.0339, lng: 1.6596, color: '#42a5f5' },
+
+  // Oceania
+  { name: 'Australia', lat: -25.2744, lng: 133.7751, color: '#ffca28' },
+  { name: 'New Zealand', lat: -40.9006, lng: 174.8860, color: '#29b6f6' },
 ]
 
 function latLngToVector3(lat, lng, radius = 1.02) {
@@ -142,9 +187,20 @@ function ConnectionLines() {
     while (group.children.length) group.remove(group.children[0])
 
     const pairs = [
-      [0, 1], [0, 6], [1, 9], [2, 7], [3, 14], [4, 7],
-      [5, 6], [7, 8], [8, 11], [9, 10], [10, 7], [1, 2],
-    ]
+  // Americas
+  [36, 37], [36, 38], [37, 38], [38, 39], [39, 40],
+  // Europe
+  [21, 22], [22, 23], [23, 24], [24, 25], [21, 25],
+  [22, 27], [21, 28], [25, 33],
+  // Asia
+  [0, 1], [0, 6], [1, 3], [1, 13], [6, 15],
+  [0, 8], [9, 10], [11, 12], [16, 0],
+  // Africa
+  [45, 46], [46, 47], [47, 48], [45, 49],
+  // Cross continent
+  [36, 21], [36, 1], [0, 21], [1, 22],
+  [25, 2], [46, 23], [0, 7], [16, 22],
+]
 
     pairs.forEach(([i, j]) => {
       const a = latLngToVector3(COUNTRY_MARKERS[i].lat, COUNTRY_MARKERS[i].lng, 1.02)
@@ -225,15 +281,26 @@ function CameraController({ targetCountry }) {
     })
   }, [])
 
-  // Zoom to country
+  // Zoom to country — works for both click and search
   useEffect(() => {
     if (targetCountry) {
       const country = COUNTRY_MARKERS.find(c => c.name === targetCountry)
       if (country) {
+        // Fly to country with cinematic rotation
         const target = latLngToVector3(country.lat, country.lng, 2.5)
         gsap.to(camera.position, {
-          x: target.x, y: target.y, z: target.z,
-          duration: 1.5, ease: 'power3.inOut'
+          x: target.x,
+          y: target.y,
+          z: target.z,
+          duration: 2,
+          ease: 'power3.inOut'
+        })
+      } else {
+        // Country not in markers — just zoom in nicely
+        gsap.to(camera.position, {
+          z: 2.2,
+          duration: 1.5,
+          ease: 'power3.inOut'
         })
       }
     }
@@ -242,8 +309,12 @@ function CameraController({ targetCountry }) {
   return null
 }
 
-export default function Globe({ onCountrySelect }) {
+export default function Globe({ onCountrySelect, targetCountry: externalTarget }) {
   const [targetCountry, setTargetCountry] = useState(null)
+
+  useEffect(() => {
+    if (externalTarget) setTargetCountry(externalTarget)
+  }, [externalTarget])
 
   const handleCountryClick = useCallback((name) => {
     setTargetCountry(name)

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 const ALL_COUNTRIES = [
   'India', 'United States', 'China', 'Brazil', 'Russia',
@@ -18,12 +18,16 @@ const ALL_COUNTRIES = [
   'Jordan', 'Lebanon', 'Syria', 'Yemen', 'Oman',
   'Qatar', 'Kuwait', 'Bahrain', 'United Arab Emirates', 'Kazakhstan',
   'Uzbekistan', 'Turkmenistan', 'Tanzania', 'Uganda', 'Rwanda',
+  'South Korea', 'Venezuela', 'Tunisia', 'Libya', 'Somalia',
+  'Zimbabwe', 'Zambia', 'Mozambique', 'Madagascar', 'Cameroon',
+  'Ivory Coast', 'Niger', 'Burkina Faso', 'Mali', 'Senegal',
 ]
 
 export default function SearchBar({ onCountrySelect }) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
   const [focused, setFocused] = useState(false)
+  const inputRef = useRef(null)
 
   useEffect(() => {
     if (query.length < 1) { setResults([]); return }
@@ -37,6 +41,18 @@ export default function SearchBar({ onCountrySelect }) {
     onCountrySelect({ name: country })
     setQuery('')
     setResults([])
+    inputRef.current?.blur()
+  }
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && results.length > 0) {
+      handleSelect(results[0])
+    }
+    if (e.key === 'Escape') {
+      setQuery('')
+      setResults([])
+      inputRef.current?.blur()
+    }
   }
 
   return (
@@ -45,11 +61,13 @@ export default function SearchBar({ onCountrySelect }) {
       <div className="search-box">
         <span className="search-icon">⌕</span>
         <input
+          ref={inputRef}
           className="search-input"
           type="text"
           placeholder="e.g. India, France, Japan..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={handleKeyDown}
           onFocus={() => setFocused(true)}
           onBlur={() => setTimeout(() => setFocused(false), 200)}
         />
@@ -57,7 +75,14 @@ export default function SearchBar({ onCountrySelect }) {
       {results.length > 0 && focused && (
         <div className="search-results">
           {results.map((country) => (
-            <div key={country} className="search-result-item" onClick={() => handleSelect(country)}>
+            <div
+              key={country}
+              className="search-result-item"
+              onMouseDown={(e) => {
+                e.preventDefault()
+                handleSelect(country)
+              }}
+            >
               🌐 {country}
             </div>
           ))}

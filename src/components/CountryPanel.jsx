@@ -8,35 +8,49 @@ const WEATHER_ICONS = {
 const API_KEY = 'f39d6d858a90fda55082360f3952cee5'
 const UNSPLASH_KEY = 'LVDctbuka5sKl4uP4lAv22M8SJX6Tm3DOywgF6ZSQB8'
 
-function useLiveClock(capital) {
+function useLiveClock(timezone) {
   const [time, setTime] = useState('')
 
   useEffect(() => {
-    if (!capital) return
+    if (!timezone) return
+
     const tick = () => {
       try {
-        const t = new Date().toLocaleTimeString('en-US', {
-          timeZone: Intl.supportedValuesOf
-            ? Intl.supportedValuesOf('timeZone').find(tz =>
-                tz.toLowerCase().includes(capital.toLowerCase().split(' ')[0])
-              ) || 'UTC'
-            : 'UTC',
-          hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
-        })
-        setTime(t)
+        const match = timezone.match(/UTC([+-])(\d{1,2}):?(\d{0,2})/)
+        if (match) {
+          const sign = match[1] === '+' ? 1 : -1
+          const hours = parseInt(match[2])
+          const minutes = parseInt(match[3] || '0')
+          const offsetMinutes = sign * (hours * 60 + minutes)
+          const now = new Date()
+          const utc = now.getTime() + now.getTimezoneOffset() * 60000
+          const local = new Date(utc + offsetMinutes * 60000)
+          const h = local.getHours()
+          const m = String(local.getMinutes()).padStart(2, '0')
+          const s = String(local.getSeconds()).padStart(2, '0')
+          const ampm = h >= 12 ? 'PM' : 'AM'
+          const h12 = h % 12 || 12
+          setTime(`${String(h12).padStart(2, '0')}:${m}:${s} ${ampm}`)
+        } else {
+          setTime(new Date().toLocaleTimeString('en-US', {
+            hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
+          }))
+        }
       } catch {
         setTime(new Date().toLocaleTimeString('en-US', {
           hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
         }))
       }
     }
+
     tick()
     const interval = setInterval(tick, 1000)
     return () => clearInterval(interval)
-  }, [capital])
+  }, [timezone])
 
   return time
 }
+
 export default function CountryPanel({ country, isOpen, onClose }) {
   const [data, setData] = useState(null)
   const [weather, setWeather] = useState(null)
@@ -47,7 +61,8 @@ export default function CountryPanel({ country, isOpen, onClose }) {
   const [amount, setAmount] = useState('1000')
   const [converted, setConverted] = useState(null)
   const [rateLoading, setRateLoading] = useState(false)
-const clock = useLiveClock(data?.capital)
+
+  const clock = useLiveClock(data?.timezone)
 
   useEffect(() => {
     if (!country) return
@@ -74,14 +89,16 @@ const clock = useLiveClock(data?.capital)
           setData({
             flag: c.flag || '🌐',
             flagImg: c.flags?.svg || c.flags?.png || null,
-            capital, population: c.population > 1e9 ? (c.population / 1e9).toFixed(1) + 'B'
+            capital,
+            population: c.population > 1e9 ? (c.population / 1e9).toFixed(1) + 'B'
               : c.population > 1e6 ? (c.population / 1e6).toFixed(1) + 'M'
               : c.population > 1e3 ? (c.population / 1e3).toFixed(0) + 'K'
               : c.population,
             area: c.area > 1e6 ? (c.area / 1e6).toFixed(2) + 'M km²' : c.area?.toLocaleString() + ' km²',
             currencies, currCode,
             region: c.subregion || c.region || 'N/A',
-            languages, timezone: c.timezones?.[0] || 'N/A',
+            languages,
+            timezone: c.timezones?.[0] || 'N/A',
             callingCode: c.idd?.root + (c.idd?.suffixes?.[0] || ''),
             tld: c.tld?.[0] || 'N/A',
             continent: c.continents?.[0] || 'N/A',
