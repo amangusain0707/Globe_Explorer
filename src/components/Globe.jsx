@@ -3,16 +3,30 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { gsap } from 'gsap'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
+import * as topojson from 'topojson-client'
 
 const COUNTRY_MARKERS = [
-  // Asia
   { name: 'India', lat: 20.5937, lng: 78.9629, color: '#ff6b6b' },
+  { name: 'United States', lat: 37.0902, lng: -95.7129, color: '#4fc3f7' },
   { name: 'China', lat: 35.8617, lng: 104.1954, color: '#ff9800' },
+  { name: 'Brazil', lat: -14.2350, lng: -51.9253, color: '#66bb6a' },
+  { name: 'Russia', lat: 61.5240, lng: 105.3188, color: '#ab47bc' },
+  { name: 'Australia', lat: -25.2744, lng: 133.7751, color: '#ffca28' },
   { name: 'Japan', lat: 36.2048, lng: 138.2529, color: '#ef5350' },
-  { name: 'South Korea', lat: 35.9078, lng: 127.7669, color: '#26c6da' },
-  { name: 'Indonesia', lat: -0.7893, lng: 113.9213, color: '#ef5350' },
+  { name: 'Germany', lat: 51.1657, lng: 10.4515, color: '#26c6da' },
+  { name: 'France', lat: 46.2276, lng: 2.2137, color: '#7e57c2' },
+  { name: 'Canada', lat: 56.1304, lng: -106.3468, color: '#ec407a' },
+  { name: 'United Kingdom', lat: 55.3781, lng: -3.4360, color: '#29b6f6' },
+  { name: 'Italy', lat: 41.8719, lng: 12.5674, color: '#26a69a' },
+  { name: 'South Africa', lat: -30.5595, lng: 22.9375, color: '#d4e157' },
+  { name: 'Mexico', lat: 23.6345, lng: -102.5528, color: '#ff7043' },
+  { name: 'Argentina', lat: -38.4161, lng: -63.6167, color: '#42a5f5' },
+  { name: 'Egypt', lat: 26.8206, lng: 30.8025, color: '#ffa726' },
+  { name: 'Nigeria', lat: 9.0820, lng: 8.6753, color: '#66bb6a' },
   { name: 'Saudi Arabia', lat: 23.8859, lng: 45.0792, color: '#26c6da' },
+  { name: 'Indonesia', lat: -0.7893, lng: 113.9213, color: '#ef5350' },
   { name: 'Turkey', lat: 38.9637, lng: 35.2433, color: '#ab47bc' },
+  { name: 'South Korea', lat: 35.9078, lng: 127.7669, color: '#26c6da' },
   { name: 'Pakistan', lat: 30.3753, lng: 69.3451, color: '#66bb6a' },
   { name: 'Bangladesh', lat: 23.6850, lng: 90.3563, color: '#ff7043' },
   { name: 'Thailand', lat: 15.8700, lng: 100.9925, color: '#ffca28' },
@@ -27,14 +41,7 @@ const COUNTRY_MARKERS = [
   { name: 'Nepal', lat: 28.3949, lng: 84.1240, color: '#ff6b6b' },
   { name: 'Sri Lanka', lat: 7.8731, lng: 80.7718, color: '#66bb6a' },
   { name: 'Kazakhstan', lat: 48.0196, lng: 66.9237, color: '#ab47bc' },
-
-  // Europe
-  { name: 'Germany', lat: 51.1657, lng: 10.4515, color: '#26c6da' },
-  { name: 'France', lat: 46.2276, lng: 2.2137, color: '#7e57c2' },
-  { name: 'United Kingdom', lat: 55.3781, lng: -3.4360, color: '#29b6f6' },
-  { name: 'Italy', lat: 41.8719, lng: 12.5674, color: '#26a69a' },
   { name: 'Spain', lat: 40.4637, lng: -3.7492, color: '#ff7043' },
-  { name: 'Russia', lat: 61.5240, lng: 105.3188, color: '#ab47bc' },
   { name: 'Ukraine', lat: 48.3794, lng: 31.1656, color: '#ffca28' },
   { name: 'Poland', lat: 51.9194, lng: 19.1451, color: '#ef5350' },
   { name: 'Netherlands', lat: 52.1326, lng: 5.2913, color: '#ff9800' },
@@ -43,32 +50,17 @@ const COUNTRY_MARKERS = [
   { name: 'Switzerland', lat: 46.8182, lng: 8.2275, color: '#ec407a' },
   { name: 'Portugal', lat: 39.3999, lng: -8.2245, color: '#66bb6a' },
   { name: 'Greece', lat: 39.0742, lng: 21.8243, color: '#29b6f6' },
-
-  // Americas
-  { name: 'United States', lat: 37.0902, lng: -95.7129, color: '#4fc3f7' },
-  { name: 'Canada', lat: 56.1304, lng: -106.3468, color: '#ec407a' },
-  { name: 'Brazil', lat: -14.2350, lng: -51.9253, color: '#66bb6a' },
-  { name: 'Mexico', lat: 23.6345, lng: -102.5528, color: '#ff7043' },
-  { name: 'Argentina', lat: -38.4161, lng: -63.6167, color: '#42a5f5' },
   { name: 'Colombia', lat: 4.5709, lng: -74.2973, color: '#ffa726' },
   { name: 'Chile', lat: -35.6751, lng: -71.5430, color: '#ab47bc' },
   { name: 'Peru', lat: -9.1900, lng: -75.0152, color: '#ff6b6b' },
   { name: 'Venezuela', lat: 6.4238, lng: -66.5897, color: '#26c6da' },
   { name: 'Cuba', lat: 21.5218, lng: -77.7812, color: '#ef5350' },
-
-  // Africa
-  { name: 'South Africa', lat: -30.5595, lng: 22.9375, color: '#d4e157' },
-  { name: 'Nigeria', lat: 9.0820, lng: 8.6753, color: '#66bb6a' },
-  { name: 'Egypt', lat: 26.8206, lng: 30.8025, color: '#ffa726' },
   { name: 'Ethiopia', lat: 9.1450, lng: 40.4897, color: '#ff7043' },
   { name: 'Kenya', lat: -0.0236, lng: 37.9062, color: '#26a69a' },
   { name: 'Ghana', lat: 7.9465, lng: -1.0232, color: '#ffca28' },
   { name: 'Tanzania', lat: -6.3690, lng: 34.8888, color: '#ab47bc' },
   { name: 'Morocco', lat: 31.7917, lng: -7.0926, color: '#ff6b6b' },
   { name: 'Algeria', lat: 28.0339, lng: 1.6596, color: '#42a5f5' },
-
-  // Oceania
-  { name: 'Australia', lat: -25.2744, lng: 133.7751, color: '#ffca28' },
   { name: 'New Zealand', lat: -40.9006, lng: 174.8860, color: '#29b6f6' },
 ]
 
@@ -84,7 +76,6 @@ function latLngToVector3(lat, lng, radius = 1.02) {
 
 function DayNightShader() {
   const meshRef = useRef()
-
   useFrame(() => {
     if (meshRef.current) {
       const now = new Date()
@@ -93,17 +84,10 @@ function DayNightShader() {
       meshRef.current.rotation.y = angle
     }
   })
-
   return (
     <mesh ref={meshRef}>
       <sphereGeometry args={[1.003, 64, 64]} />
-      <meshPhongMaterial
-        color="#000008"
-        transparent
-        opacity={0.75}
-        side={THREE.FrontSide}
-        depthWrite={false}
-      />
+      <meshPhongMaterial color="#000008" transparent opacity={0.6} side={THREE.FrontSide} depthWrite={false} />
     </mesh>
   )
 }
@@ -124,6 +108,54 @@ function GlowRing() {
       <meshPhongMaterial color="#00e5ff" transparent opacity={0.03} side={THREE.BackSide} />
     </mesh>
   )
+}
+
+function CountryBorders() {
+  const groupRef = useRef()
+
+  useEffect(() => {
+    const group = groupRef.current
+    if (!group) return
+
+    fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json')
+      .then(r => r.json())
+      .then(world => {
+        const countries = topojson.feature(world, world.objects.countries)
+        const borders = topojson.mesh(world, world.objects.countries, (a, b) => a !== b)
+
+        countries.features.forEach(feature => {
+          const coords = feature.geometry.type === 'Polygon'
+            ? [feature.geometry.coordinates]
+            : feature.geometry.coordinates
+
+          coords.forEach(polygon => {
+            polygon.forEach(ring => {
+              const points = []
+              ring.forEach(([lng, lat]) => {
+                points.push(latLngToVector3(lat, lng, 1.001))
+              })
+              if (points.length < 2) return
+              const geo = new THREE.BufferGeometry().setFromPoints(points)
+              const mat = new THREE.LineBasicMaterial({ color: '#4aaa6a', transparent: true, opacity: 0.5 })
+              group.add(new THREE.Line(geo, mat))
+            })
+          })
+        })
+
+        if (borders.type === 'MultiLineString') {
+          borders.coordinates.forEach(line => {
+            const points = line.map(([lng, lat]) => latLngToVector3(lat, lng, 1.002))
+            if (points.length < 2) return
+            const geo = new THREE.BufferGeometry().setFromPoints(points)
+            const mat = new THREE.LineBasicMaterial({ color: '#66dd88', transparent: true, opacity: 0.7 })
+            group.add(new THREE.Line(geo, mat))
+          })
+        }
+      })
+      .catch(err => console.error('Failed to load world atlas:', err))
+  }, [])
+
+  return <group ref={groupRef} />
 }
 
 function Marker({ lat, lng, color, name, onClick }) {
@@ -152,8 +184,7 @@ function Marker({ lat, lng, color, name, onClick }) {
         color={hovered ? '#ffffff' : color}
         emissive={color}
         emissiveIntensity={hovered ? 2 : 0.8}
-        transparent
-        opacity={0.9}
+        transparent opacity={0.9}
       />
     </mesh>
   )
@@ -187,35 +218,21 @@ function ConnectionLines() {
     while (group.children.length) group.remove(group.children[0])
 
     const pairs = [
-  // Americas
-  [36, 37], [36, 38], [37, 38], [38, 39], [39, 40],
-  // Europe
-  [21, 22], [22, 23], [23, 24], [24, 25], [21, 25],
-  [22, 27], [21, 28], [25, 33],
-  // Asia
-  [0, 1], [0, 6], [1, 3], [1, 13], [6, 15],
-  [0, 8], [9, 10], [11, 12], [16, 0],
-  // Africa
-  [45, 46], [46, 47], [47, 48], [45, 49],
-  // Cross continent
-  [36, 21], [36, 1], [0, 21], [1, 22],
-  [25, 2], [46, 23], [0, 7], [16, 22],
-]
+      [0, 1], [0, 6], [1, 9], [2, 7], [3, 14], [4, 7],
+      [5, 6], [7, 8], [8, 11], [9, 10], [10, 7], [1, 2],
+      [0, 20], [1, 44], [7, 35], [3, 45], [4, 38],
+    ]
 
     pairs.forEach(([i, j]) => {
+      if (!COUNTRY_MARKERS[i] || !COUNTRY_MARKERS[j]) return
       const a = latLngToVector3(COUNTRY_MARKERS[i].lat, COUNTRY_MARKERS[i].lng, 1.02)
       const b = latLngToVector3(COUNTRY_MARKERS[j].lat, COUNTRY_MARKERS[j].lng, 1.02)
       const mid = new THREE.Vector3().addVectors(a, b).multiplyScalar(0.5)
       mid.normalize().multiplyScalar(1.3)
-
       const curve = new THREE.QuadraticBezierCurve3(a, mid, b)
       const points = curve.getPoints(40)
       const geo = new THREE.BufferGeometry().setFromPoints(points)
-      const mat = new THREE.LineBasicMaterial({
-        color: '#4fc3f7',
-        transparent: true,
-        opacity: 0.15,
-      })
+      const mat = new THREE.LineBasicMaterial({ color: '#4fc3f7', transparent: true, opacity: 0.15 })
       group.add(new THREE.Line(geo, mat))
     })
   }, [])
@@ -228,7 +245,7 @@ function Earth({ onCountryClick }) {
 
   useFrame((state, delta) => {
     if (globeRef.current) {
-      globeRef.current.rotation.y += delta * 0.08
+      globeRef.current.rotation.y += delta * 0.06
     }
   })
 
@@ -237,17 +254,14 @@ function Earth({ onCountryClick }) {
       <mesh castShadow receiveShadow>
         <sphereGeometry args={[1, 64, 64]} />
         <meshPhongMaterial
-          color="#1a3a5c"
-          emissive="#0a1a2e"
-          emissiveIntensity={0.3}
-          shininess={15}
-          specular={new THREE.Color('#4fc3f7')}
+          color="#060d1a"
+          emissive="#030810"
+          emissiveIntensity={0.5}
+          shininess={8}
+          specular={new THREE.Color('#1a4a6a')}
         />
       </mesh>
-      <mesh>
-        <sphereGeometry args={[1.001, 32, 32]} />
-        <meshBasicMaterial color="#1e3a5f" wireframe transparent opacity={0.08} />
-      </mesh>
+      <CountryBorders />
       <DayNightShader />
       <Atmosphere />
       <GlowRing />
@@ -271,37 +285,22 @@ function Earth({ onCountryClick }) {
 function CameraController({ targetCountry }) {
   const { camera } = useThree()
 
-  // Cinematic intro zoom
   useEffect(() => {
     camera.position.set(0, 0, 8)
-    gsap.to(camera.position, {
-      z: 2.8,
-      duration: 3,
-      ease: 'power3.inOut'
-    })
+    gsap.to(camera.position, { z: 2.8, duration: 3, ease: 'power3.inOut' })
   }, [])
 
-  // Zoom to country — works for both click and search
   useEffect(() => {
     if (targetCountry) {
       const country = COUNTRY_MARKERS.find(c => c.name === targetCountry)
       if (country) {
-        // Fly to country with cinematic rotation
         const target = latLngToVector3(country.lat, country.lng, 2.5)
         gsap.to(camera.position, {
-          x: target.x,
-          y: target.y,
-          z: target.z,
-          duration: 2,
-          ease: 'power3.inOut'
+          x: target.x, y: target.y, z: target.z,
+          duration: 2, ease: 'power3.inOut'
         })
       } else {
-        // Country not in markers — just zoom in nicely
-        gsap.to(camera.position, {
-          z: 2.2,
-          duration: 1.5,
-          ease: 'power3.inOut'
-        })
+        gsap.to(camera.position, { z: 2.2, duration: 1.5, ease: 'power3.inOut' })
       }
     }
   }, [targetCountry, camera])
@@ -327,10 +326,10 @@ export default function Globe({ onCountrySelect, targetCountry: externalTarget }
       gl={{ antialias: true, alpha: true }}
       style={{ background: 'transparent' }}
     >
-      <ambientLight intensity={0.3} />
+      <ambientLight intensity={0.2} />
       <directionalLight position={[5, 3, 5]} intensity={1.2} color="#ffffff" />
       <pointLight position={[-5, -3, -5]} intensity={0.3} color="#4fc3f7" />
-      <pointLight position={[0, 5, 0]} intensity={0.2} color="#00e5ff" />
+      <pointLight position={[0, 5, 0]} intensity={0.15} color="#00e5ff" />
       <Stars radius={100} depth={50} count={6000} factor={4} saturation={0.5} fade speed={0.3} />
       <Earth onCountryClick={handleCountryClick} />
       <CameraController targetCountry={targetCountry} />
