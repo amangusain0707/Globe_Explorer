@@ -5,7 +5,7 @@ every country in the world with real-time data, live weather, currency
 conversion, and travel guides.
 
 ## 🔗 Live Demo
-[globeexlorer3d.netlify.app](https://globeexlorer3d.netlify.app)
+[globeexplorer3d.netlify.app](https://globeexplorer3d.netlify.app)
 
 ## ✨ Features
 
