@@ -179,7 +179,7 @@ function Marker({ lat, lng, color, name, onClick }) {
       onPointerOver={() => setHovered(true)}
       onPointerOut={() => setHovered(false)}
     >
-      <sphereGeometry args={[0.012, 8, 8]} />
+      <sphereGeometry args={[0.018, 8, 8]} />
       <meshStandardMaterial
         color={hovered ? '#ffffff' : color}
         emissive={color}
