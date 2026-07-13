@@ -10,12 +10,11 @@ const UNSPLASH_KEY = 'LVDctbuka5sKl4uP4lAv22M8SJX6Tm3DOywgF6ZSQB8'
 
 function useLiveClock(timezone) {
   const [time, setTime] = useState('')
-
   useEffect(() => {
-    if (!timezone) return
-
+    if (!timezone || timezone === 'N/A') return
     const tick = () => {
       try {
+        // Handle both UTC offset format and IANA format
         const match = timezone.match(/UTC([+-])(\d{1,2}):?(\d{0,2})/)
         if (match) {
           const sign = match[1] === '+' ? 1 : -1
@@ -32,9 +31,12 @@ function useLiveClock(timezone) {
           const h12 = h % 12 || 12
           setTime(`${String(h12).padStart(2, '0')}:${m}:${s} ${ampm}`)
         } else {
-          setTime(new Date().toLocaleTimeString('en-US', {
+          // Try as IANA timezone
+          const t = new Date().toLocaleTimeString('en-US', {
+            timeZone: timezone,
             hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
-          }))
+          })
+          setTime(t)
         }
       } catch {
         setTime(new Date().toLocaleTimeString('en-US', {
@@ -42,12 +44,10 @@ function useLiveClock(timezone) {
         }))
       }
     }
-
     tick()
     const interval = setInterval(tick, 1000)
     return () => clearInterval(interval)
   }, [timezone])
-
   return time
 }
 
@@ -74,78 +74,136 @@ export default function CountryPanel({ country, isOpen, onClose }) {
     setCurrencyCode('')
     setLoading(true)
 
-    fetch(`https://restcountries.com/v3.1/name/${encodeURIComponent(country.name)}?fullText=true`)
+    fetch(`https://countries-api.davegarvey.workers.dev/search?q=${encodeURIComponent(country.name)}`)
       .then(r => r.json())
       .then(d => {
-        if (d && d[0]) {
-          const c = d[0]
-          const capital = c.capital?.[0] || country.name
-          const currencies = c.currencies
-            ? Object.values(c.currencies).map(cur => `${cur.name} (${cur.symbol || ''})`).join(', ')
-            : 'N/A'
-          const currCode = c.currencies ? Object.keys(c.currencies)[0] : ''
-          const languages = c.languages ? Object.values(c.languages) : []
-          setCurrencyCode(currCode)
-          setData({
-            flag: c.flag || '🌐',
-            flagImg: c.flags?.svg || c.flags?.png || null,
-            capital,
-            population: c.population > 1e9 ? (c.population / 1e9).toFixed(1) + 'B'
-              : c.population > 1e6 ? (c.population / 1e6).toFixed(1) + 'M'
-              : c.population > 1e3 ? (c.population / 1e3).toFixed(0) + 'K'
-              : c.population,
-            area: c.area > 1e6 ? (c.area / 1e6).toFixed(2) + 'M km²' : c.area?.toLocaleString() + ' km²',
-            currencies, currCode,
-            region: c.subregion || c.region || 'N/A',
-            languages,
-            timezone: c.timezones?.[0] || 'N/A',
-            callingCode: c.idd?.root + (c.idd?.suffixes?.[0] || ''),
-            tld: c.tld?.[0] || 'N/A',
-            continent: c.continents?.[0] || 'N/A',
-          })
+        const c = d?.results?.[0]
+        if (!c) { setLoading(false); return }
 
-          // Weather
-          fetch(`https://api.openweathermap.org/data/2.5/weather?q=${capital}&appid=${API_KEY}&units=metric`)
-            .then(r => r.json())
-            .then(w => {
-              if (w.main) {
-                setWeather({
-                  temp: Math.round(w.main.temp),
-                  feels: Math.round(w.main.feels_like),
-                  humidity: w.main.humidity,
-                  desc: w.weather[0].description,
-                  main: w.weather[0].main,
-                  wind: w.wind.speed,
-                  visibility: w.visibility ? (w.visibility / 1000).toFixed(1) + ' km' : 'N/A',
-                })
-              } else {
-                setWeather({
-                  temp: Math.floor(Math.random() * 30) + 5,
-                  feels: Math.floor(Math.random() * 28) + 4,
-                  humidity: Math.floor(Math.random() * 60) + 30,
-                  desc: 'partly cloudy', main: 'Clouds',
-                  wind: (Math.random() * 10 + 2).toFixed(1), visibility: '10 km',
-                })
-              }
-            }).catch(() => {})
+        const capital = c.capital || country.name
+        const currCode = c.currency || ''
+        const tld = c.code ? '.' + c.code.toLowerCase() : 'N/A'
+        setCurrencyCode(currCode)
 
-          // Unsplash
-          fetch(`https://api.unsplash.com/search/photos?query=${country.name}+landscape&per_page=1&client_id=${UNSPLASH_KEY}`)
-            .then(r => r.json())
-            .then(u => {
-              if (u.results?.[0]) setPhoto(u.results[0].urls.regular)
-            }).catch(() => {})
+        setData({
+          flag: '🌐',
+          flagImg: c.code ? `https://flagcdn.com/w80/${c.code.toLowerCase()}.png` : null,
+          capital,
+          population: c.population > 1e9 ? (c.population / 1e9).toFixed(1) + 'B'
+            : c.population > 1e6 ? (c.population / 1e6).toFixed(1) + 'M'
+            : c.population > 1e3 ? (c.population / 1e3).toFixed(0) + 'K'
+            : String(c.population || 'N/A'),
+          area: 'N/A',
+          currencies: c.currency || 'N/A',
+          currCode,
+          region: c.subregion || c.region || 'N/A',
+          languages: Array.isArray(c.languages) ? c.languages : [],
+          timezone: 'N/A',
+          callingCode: c.callingCode || 'N/A',
+          tld,
+          continent: c.region || 'N/A',
+        })
 
-          // Wikivoyage
-          fetch(`https://en.wikivoyage.org/api/rest_v1/page/summary/${encodeURIComponent(country.name)}`)
-            .then(r => r.json())
-            .then(w => {
-              if (w.extract) setWiki(w.extract)
-            }).catch(() => {})
+        // Weather
+        fetch(`https://api.openweathermap.org/data/2.5/weather?q=${capital}&appid=${API_KEY}&units=metric`)
+          .then(r => r.json())
+          .then(w => {
+            if (w.main) {
+              setWeather({
+                temp: Math.round(w.main.temp),
+                feels: Math.round(w.main.feels_like),
+                humidity: w.main.humidity,
+                desc: w.weather[0].description,
+                main: w.weather[0].main,
+                wind: w.wind.speed,
+                visibility: w.visibility ? (w.visibility / 1000).toFixed(1) + ' km' : 'N/A',
+              })
+            } else {
+              setWeather({
+                temp: Math.floor(Math.random() * 30) + 5,
+                feels: Math.floor(Math.random() * 28) + 4,
+                humidity: Math.floor(Math.random() * 60) + 30,
+                desc: 'partly cloudy', main: 'Clouds',
+                wind: (Math.random() * 10 + 2).toFixed(1), visibility: '10 km',
+              })
+            }
+          }).catch(() => {})
+
+        // Unsplash
+        fetch(`https://api.unsplash.com/search/photos?query=${country.name}+landscape&per_page=1&client_id=${UNSPLASH_KEY}`)
+          .then(r => r.json())
+          .then(u => {
+            if (u.results?.[0]) setPhoto(u.results[0].urls.regular)
+          }).catch(() => {})
+
+        // Wikivoyage
+        fetch(`https://en.wikivoyage.org/api/rest_v1/page/summary/${encodeURIComponent(country.name)}`)
+          .then(r => r.json())
+          .then(w => {
+            if (w.extract) setWiki(w.extract)
+          }).catch(() => {})
+
+   const TIMEZONE_MAP = {
+          'New Delhi': 'Asia/Kolkata', 'Washington, D.C.': 'America/New_York',
+          'Washington D.C.': 'America/New_York', 'Beijing': 'Asia/Shanghai',
+          'Brasília': 'America/Sao_Paulo', 'Moscow': 'Europe/Moscow',
+          'Canberra': 'Australia/Sydney', 'Tokyo': 'Asia/Tokyo',
+          'Berlin': 'Europe/Berlin', 'Paris': 'Europe/Paris',
+          'Ottawa': 'America/Toronto', 'London': 'Europe/London',
+          'Rome': 'Europe/Rome', 'Pretoria': 'Africa/Johannesburg',
+          'Mexico City': 'America/Mexico_City', 'Buenos Aires': 'America/Argentina/Buenos_Aires',
+          'Cairo': 'Africa/Cairo', 'Abuja': 'Africa/Lagos',
+          'Riyadh': 'Asia/Riyadh', 'Jakarta': 'Asia/Jakarta',
+          'Ankara': 'Europe/Istanbul', 'Seoul': 'Asia/Seoul',
+          'Islamabad': 'Asia/Karachi', 'Dhaka': 'Asia/Dhaka',
+          'Bangkok': 'Asia/Bangkok', 'Hanoi': 'Asia/Ho_Chi_Minh',
+          'Kuala Lumpur': 'Asia/Kuala_Lumpur', 'Manila': 'Asia/Manila',
+          'Tehran': 'Asia/Tehran', 'Baghdad': 'Asia/Baghdad',
+          'Jerusalem': 'Asia/Jerusalem', 'Abu Dhabi': 'Asia/Dubai',
+          'Singapore': 'Asia/Singapore', 'Kathmandu': 'Asia/Kathmandu',
+          'Colombo': 'Asia/Colombo', 'Nur-Sultan': 'Asia/Almaty',
+          'Madrid': 'Europe/Madrid', 'Kyiv': 'Europe/Kiev',
+          'Warsaw': 'Europe/Warsaw', 'Amsterdam': 'Europe/Amsterdam',
+          'Stockholm': 'Europe/Stockholm', 'Oslo': 'Europe/Oslo',
+          'Bern': 'Europe/Zurich', 'Lisbon': 'Europe/Lisbon',
+          'Athens': 'Europe/Athens', 'Bogotá': 'America/Bogota',
+          'Santiago': 'America/Santiago', 'Lima': 'America/Lima',
+          'Caracas': 'America/Caracas', 'Havana': 'America/Havana',
+          'Addis Ababa': 'Africa/Addis_Ababa', 'Nairobi': 'Africa/Nairobi',
+          'Accra': 'Africa/Accra', 'Dodoma': 'Africa/Dar_es_Salaam',
+          'Rabat': 'Africa/Casablanca', 'Algiers': 'Africa/Algiers',
+          'Wellington': 'Pacific/Auckland',
         }
+
+        const AREA_MAP = {
+          'India': '3.29M km²', 'United States': '9.83M km²', 'China': '9.59M km²',
+          'Brazil': '8.51M km²', 'Russia': '17.1M km²', 'Australia': '7.69M km²',
+          'Japan': '377K km²', 'Germany': '357K km²', 'France': '551K km²',
+          'Canada': '9.98M km²', 'United Kingdom': '242K km²', 'Italy': '301K km²',
+          'South Africa': '1.22M km²', 'Mexico': '1.96M km²', 'Argentina': '2.78M km²',
+          'Egypt': '1.01M km²', 'Nigeria': '923K km²', 'Saudi Arabia': '2.15M km²',
+          'Indonesia': '1.91M km²', 'Turkey': '783K km²', 'South Korea': '100K km²',
+          'Pakistan': '881K km²', 'Bangladesh': '147K km²', 'Thailand': '513K km²',
+          'Vietnam': '331K km²', 'Malaysia': '330K km²', 'Philippines': '300K km²',
+          'Iran': '1.65M km²', 'Iraq': '438K km²', 'Israel': '20K km²',
+          'United Arab Emirates': '83K km²', 'Singapore': '728 km²',
+          'Nepal': '147K km²', 'Sri Lanka': '65K km²', 'Kazakhstan': '2.72M km²',
+          'Spain': '506K km²', 'Ukraine': '604K km²', 'Poland': '312K km²',
+          'Netherlands': '41K km²', 'Sweden': '450K km²', 'Norway': '385K km²',
+          'Switzerland': '41K km²', 'Portugal': '92K km²', 'Greece': '132K km²',
+          'Colombia': '1.14M km²', 'Chile': '756K km²', 'Peru': '1.29M km²',
+          'Venezuela': '912K km²', 'Cuba': '110K km²', 'Ethiopia': '1.10M km²',
+          'Kenya': '580K km²', 'Ghana': '239K km²', 'Tanzania': '945K km²',
+          'Morocco': '446K km²', 'Algeria': '2.38M km²', 'New Zealand': '268K km²',
+        }
+
+        const tz = TIMEZONE_MAP[capital] || 'UTC'
+        const area = AREA_MAP[country.name] || 'N/A'
+        setData(prev => ({ ...prev, timezone: tz, area }))
+
         setLoading(false)
       }).catch(() => setLoading(false))
-  }, [country])
+  }, [country])     
 
   const handleConvert = () => {
     if (!currencyCode || !amount) return
@@ -192,7 +250,9 @@ export default function CountryPanel({ country, isOpen, onClose }) {
 
           <p className="panel-section-title">🕐 Local Time</p>
           <div style={{ background: 'rgba(79,195,247,0.05)', border: '1px solid var(--border)', padding: '1rem', borderRadius: '2px', marginBottom: '1rem', textAlign: 'center' }}>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', fontWeight: '800', color: 'var(--accent2)', letterSpacing: '0.05em', lineHeight: 1 }}>{clock}</div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', fontWeight: '800', color: 'var(--accent2)', letterSpacing: '0.05em', lineHeight: 1 }}>
+              {clock || '-- : -- : --'}
+            </div>
             <div style={{ fontSize: '0.7rem', color: 'var(--muted)', marginTop: '0.4rem', letterSpacing: '0.1em' }}>{data.timezone}</div>
           </div>
           <div className="panel-divider" />
